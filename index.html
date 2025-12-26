@@ -3,84 +3,163 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { background: #0a0a0c; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; margin: 0; }
+        body { 
+            background: radial-gradient(circle, #1a1a2e 0%, #050505 100%); 
+            display: flex; justify-content: center; align-items: center; 
+            height: 100vh; margin: 0; overflow: hidden; font-family: 'Courier New', Courier, monospace;
+        }
         
-        /* Контейнер марионетки */
-        .marionette { position: relative; width: 200px; height: 400px; cursor: pointer; }
+        /* Контейнер марионетки (Крупный масштаб) */
+        .marionette { 
+            position: relative; 
+            width: 400px; height: 700px; 
+            cursor: pointer; 
+        }
 
-        /* Общие настройки для всех частей тела */
-        .part { position: absolute; background-size: contain; background-repeat: no-repeat; transition: transform 0.3s ease; }
+        .part { position: absolute; background-size: contain; background-repeat: no-repeat; transition: transform 0.2s ease; }
 
-        /* Торс - центральная часть */
+        /* Туловище */
         .body {
-            width: 120px; height: 180px;
-            top: 120px; left: 40px;
-            background-image: url('https://img.icons8.com/color/344/t-shirt.png'); /* Замени на тело.png */
+            width: 300px; height: 400px;
+            top: 250px; left: 50px;
+            background-image: url('https://img.icons8.com/color/480/suit.png'); 
             z-index: 2;
-            animation: breathe 4s ease-in-out infinite;
+            animation: breathe 5s ease-in-out infinite;
         }
 
         /* Голова */
         .head {
-            width: 90px; height: 90px;
-            top: 35px; left: 55px;
-            background-image: url('https://img.icons8.com/color/344/astronaut-helmet.png'); /* Замени на голова.png */
+            width: 180px; height: 180px;
+            top: 80px; left: 110px;
+            background-image: url('https://img.icons8.com/color/480/user-male-circle.png');
             z-index: 3;
             transform-origin: bottom center;
-            animation: head-bob 4s ease-in-out infinite;
+            animation: head-bob 5s ease-in-out infinite;
         }
 
         /* Руки */
         .arm {
-            width: 40px; height: 120px;
-            background-image: url('https://img.icons8.com/color/344/hand.png'); /* Замени на рука.png */
+            width: 80px; height: 250px;
+            background-image: url('https://img.icons8.com/color/480/hand.png');
             z-index: 1;
             transform-origin: top center;
         }
 
-        .left-arm { top: 130px; left: 10px; transform: rotate(15deg); }
-        .right-arm { top: 130px; left: 150px; transform: rotate(-15deg); }
+        .left-arm { top: 270px; left: -10px; transform: rotate(10deg); }
+        .right-arm { top: 270px; left: 330px; transform: rotate(-10deg); }
 
         /* Анимации */
         @keyframes breathe {
             0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.02); }
+            50% { transform: scale(1.03); }
         }
 
         @keyframes head-bob {
-            0%, 100% { transform: rotate(-3deg); }
-            50% { transform: rotate(3deg) translateY(-5px); }
+            0%, 100% { transform: rotate(-2deg); }
+            50% { transform: rotate(4deg); }
         }
 
-        /* Эффект при наведении - машет рукой */
-        .marionette:hover .right-arm {
-            animation: wave 1s ease-in-out infinite;
-        }
+        /* Машет рукой при клике */
+        .waving { animation: wave 0.8s ease-in-out infinite !important; }
 
         @keyframes wave {
-            0%, 100% { transform: rotate(-15deg); }
-            50% { transform: rotate(-110deg); }
+            0%, 100% { transform: rotate(-10deg); }
+            50% { transform: rotate(-130deg); }
         }
 
-        /* Облако текста */
-        .bubble {
-            position: absolute; top: -50px; left: 120px;
-            background: white; padding: 10px 20px; border-radius: 20px;
-            color: black; font-weight: bold; opacity: 0;
-            transform: scale(0.5); transition: 0.3s;
+        /* Текстовое облако */
+        .speech-container {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 400px;
+            min-height: 80px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 4px solid #00d2ff;
+            border-radius: 15px;
+            padding: 20px;
+            color: #333;
+            font-size: 20px;
+            font-weight: bold;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: none;
+            z-index: 10;
         }
-        .marionette:hover .bubble { opacity: 1; transform: scale(1); }
+        
+        .speech-container::after {
+            content: '';
+            position: absolute;
+            bottom: -20px; left: 50%;
+            border-width: 20px 20px 0;
+            border-style: solid;
+            border-color: rgba(255, 255, 255, 0.95) transparent;
+            display: block; width: 0;
+        }
     </style>
 </head>
 <body>
 
-<div class="marionette">
-    <div class="bubble">Приём! Как слышно?</div>
-    <div class="head part"></div>
+<div class="marionette" onclick="startSpeech()">
+    <div id="speech-box" class="speech-container"></div>
+    <div class="head part" id="head"></div>
     <div class="body part"></div>
     <div class="arm left-arm part"></div>
-    <div class="arm right-arm part"></div>
+    <div class="arm right-arm part" id="right-arm"></div>
 </div>
+
+<script>
+    const phrases = [
+        "Приветствую! Я твоя анимированная марионетка.",
+        "Как видишь, я теперь намного крупнее!",
+        "Нажми на меня еще раз, чтобы я что-то сказал.",
+        "Этот текст выводится по буквам, как в настоящей игре."
+    ];
+    
+    let currentPhrase = 0;
+    let isTyping = false;
+
+    function startSpeech() {
+        if (isTyping) return;
+        
+        const box = document.getElementById('speech-box');
+        const arm = document.getElementById('right-arm');
+        const head = document.getElementById('head');
+        
+        box.style.display = 'block';
+        box.innerHTML = '';
+        isTyping = true;
+        
+        // Включаем активную жестикуляцию
+        arm.classList.add('waving');
+        head.style.animationDuration = '0.4s';
+
+        let text = phrases[currentPhrase];
+        let i = 0;
+
+        function typeWriter() {
+            if (i < text.length) {
+                box.innerHTML += text.charAt(i);
+                i++;
+                setTimeout(typeWriter, 50); // Скорость печати
+            } else {
+                isTyping = false;
+                currentPhrase = (currentPhrase + 1) % phrases.length;
+                
+                // Успокаиваем через 2 секунды после конца речи
+                setTimeout(() => {
+                    if (!isTyping) {
+                        arm.classList.remove('waving');
+                        head.style.animationDuration = '5s';
+                        box.style.display = 'none';
+                    }
+                }, 2000);
+            }
+        }
+        
+        typeWriter();
+    }
+</script>
 
 </body>
 </html>
