@@ -2,13 +2,14 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Интерактивное Видео</title>
+    <title>Интерактивный Аватар</title>
     <style>
         body {
             margin: 0; height: 100vh;
             display: flex; justify-content: center; align-items: center;
             background-color: #1a1a2e;
             font-family: sans-serif;
+            overflow: hidden;
         }
 
         .container {
@@ -17,37 +18,31 @@
             cursor: pointer;
         }
 
-        /* Видео вместо картинки */
         #hero-video {
             width: 100%;
             height: auto;
             border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            box-shadow: 0 10px 50px rgba(0,0,0,0.6);
             display: block;
         }
 
-        /* Облако текста поверх видео */
         .speech-bubble {
             position: absolute;
             top: 105px; left: 530px;
             width: 220px; height: 100px;
-            background: transparent;
             color: #333;
             font-size: 18px;
             font-weight: 600;
-            display: flex;
-            align-items: flex-start;
-            padding: 5px;
-            pointer-events: none; /* Чтобы клик проходил сквозь текст на видео */
+            pointer-events: none;
+            z-index: 10;
         }
     </style>
 </head>
 <body>
 
-<div class="container" onclick="playDialogue()">
-    <video id="hero-video" preload="auto">
+<div class="container" onclick="handleInteraction()">
+    <video id="hero-video" playsinline muted>
         <source src="talking_video.mp4" type="video/mp4">
-        Ваш браузер не поддерживает видео.
     </video>
     
     <div class="speech-bubble">
@@ -59,40 +54,59 @@
     const video = document.getElementById('hero-video');
     const textElement = document.getElementById('typed-text');
     
-    const phrases = [
-        "Теперь я не просто картинка, я живое видео!",
-        "Нажми на меня, чтобы я заговорила снова."
-    ];
-    
-    let currentIndex = 0;
+    // Настройки видео:
+    // Предположим, первые 2 секунды видео - это просто "ожидание" (моргает)
+    // А с 2-й секунды начинается сама речь.
+    const idleCheckStart = 0;
+    const idleCheckEnd = 2; 
 
-    function playDialogue() {
-        // 1. Запускаем видео
-        video.currentTime = 0; // Начинаем с начала
+    let isSpeaking = false;
+
+    // 1. Логика ожидания (зацикливаем начало)
+    video.addEventListener('timeupdate', function() {
+        if (!isSpeaking && video.currentTime >= idleCheckEnd) {
+            video.currentTime = idleCheckStart;
+            video.play();
+        }
+    });
+
+    // Стартуем "ожидание" при загрузке
+    window.onload = () => {
+        video.play().catch(e => console.log("Нужен первый клик для активации видео"));
+    };
+
+    function handleInteraction() {
+        if (isSpeaking) return;
+
+        isSpeaking = true;
+        
+        // Перематываем на момент начала речи (допустим, 2-я секунда)
+        video.currentTime = idleCheckEnd; 
         video.play();
 
-        // 2. Запускаем текст
-        textElement.innerHTML = '';
-        let phrase = phrases[currentIndex];
-        let i = 0;
+        // Запускаем текст
+        startTyping("Ого, теперь я действительно живая! Видишь разницу?");
+    }
 
+    function startTyping(phrase) {
+        textElement.innerHTML = '';
+        let i = 0;
         function type() {
             if (i < phrase.length) {
                 textElement.innerHTML += phrase.charAt(i);
                 i++;
                 setTimeout(type, 50);
+            } else {
+                // Когда текст закончился, ждем немного и возвращаемся в IDLE
+                setTimeout(() => {
+                    isSpeaking = false;
+                    textElement.innerHTML = '';
+                }, 3000);
             }
         }
         type();
-
-        currentIndex = (currentIndex + 1) % phrases.length;
     }
-
-    // Остановка видео, когда оно закончится
-    video.onended = () => {
-        console.log("Видео завершено");
-    };
 </script>
 
 </body>
-  </html>
+</html>
