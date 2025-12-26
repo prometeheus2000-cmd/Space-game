@@ -1,1 +1,98 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Интерактивное Видео</title>
+    <style>
+        body {
+            margin: 0; height: 100vh;
+            display: flex; justify-content: center; align-items: center;
+            background-color: #1a1a2e;
+            font-family: sans-serif;
+        }
 
+        .container {
+            position: relative;
+            width: 800px; height: 800px;
+            cursor: pointer;
+        }
+
+        /* Видео вместо картинки */
+        #hero-video {
+            width: 100%;
+            height: auto;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: block;
+        }
+
+        /* Облако текста поверх видео */
+        .speech-bubble {
+            position: absolute;
+            top: 105px; left: 530px;
+            width: 220px; height: 100px;
+            background: transparent;
+            color: #333;
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: flex-start;
+            padding: 5px;
+            pointer-events: none; /* Чтобы клик проходил сквозь текст на видео */
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" onclick="playDialogue()">
+    <video id="hero-video" preload="auto">
+        <source src="talking_video.mp4" type="video/mp4">
+        Ваш браузер не поддерживает видео.
+    </video>
+    
+    <div class="speech-bubble">
+        <span id="typed-text"></span>
+    </div>
+</div>
+
+<script>
+    const video = document.getElementById('hero-video');
+    const textElement = document.getElementById('typed-text');
+    
+    const phrases = [
+        "Теперь я не просто картинка, я живое видео!",
+        "Нажми на меня, чтобы я заговорила снова."
+    ];
+    
+    let currentIndex = 0;
+
+    function playDialogue() {
+        // 1. Запускаем видео
+        video.currentTime = 0; // Начинаем с начала
+        video.play();
+
+        // 2. Запускаем текст
+        textElement.innerHTML = '';
+        let phrase = phrases[currentIndex];
+        let i = 0;
+
+        function type() {
+            if (i < phrase.length) {
+                textElement.innerHTML += phrase.charAt(i);
+                i++;
+                setTimeout(type, 50);
+            }
+        }
+        type();
+
+        currentIndex = (currentIndex + 1) % phrases.length;
+    }
+
+    // Остановка видео, когда оно закончится
+    video.onended = () => {
+        console.log("Видео завершено");
+    };
+</script>
+
+</body>
+  </html>
