@@ -1,80 +1,146 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
+    <meta charset="UTF-8">
+    <title>Space Station Manager - Alpha</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
-    <style>body { margin: 0; background: #000; }</style>
+    <style>
+        body { margin: 0; background: #020205; color: #fff; font-family: sans-serif; overflow: hidden; }
+        #ui-layer { position: absolute; top: 10px; left: 10px; pointer-events: none; }
+    </style>
 </head>
 <body>
+    <div id="ui-layer">
+        <h2 id="res-display">Энергия: 100% | Скрап: 50 | О2 Станции: 100%</h2>
+    </div>
     <script>
         const config = {
             type: Phaser.AUTO,
-            width: 1000, height: 600,
-            physics: { default: 'arcade' },
+            width: window.innerWidth,
+            height: window.innerHeight,
+            physics: { default: 'arcade', arcade: { debug: false } },
             scene: { preload, create, update }
         };
 
         const game = new Phaser.Game(config);
-        let crew = [], rooms = [];
+        let crew = [];
+        let rooms = [];
+        let resources = { power: 100, scrap: 50, o2: 100 };
 
         function preload() {
             let g = this.make.graphics();
-            // Космонавт
-            g.fillStyle(0xffffff); g.fillCircle(10, 10, 10);
-            g.generateTexture('pawn', 20, 20);
-            // Отсек
-            g.clear(); g.fillStyle(0x333333); g.fillRect(0,0,100,100);
-            g.lineStyle(1, 0x666666); g.strokeRect(0,0,100,100);
-            g.generateTexture('room', 100, 100);
+            
+            // Спрайт космонавта
+            g.fillStyle(0xffffff); g.fillCircle(15, 15, 15);
+            g.fillStyle(0x333333); g.fillCircle(15, 10, 8); // Визор
+            g.generateTexture('pawn', 30, 30);
+
+            // Спрайт отсека
+            g.clear();
+            g.fillStyle(0x1a1a1a); g.fillRect(0, 0, 140, 140);
+            g.lineStyle(3, 0x444466); g.strokeRect(0, 0, 140, 140);
+            g.generateTexture('room_bg', 140, 140);
         }
 
         function create() {
-            const names = ["Реактор", "Кислород", "Склад", "Жилой", "Мостик"];
-            for(let i=0; i<5; i++) {
-                let r = {
-                    x: 150 + i*110, y: 250,
-                    o2: 100, name: names[i],
-                    sprite: this.add.image(150 + i*110, 250, 'room').setInteractive()
+            const roomData = [
+                "ШЛЮЗ", "РЕАКТОР", "СКЛАД", "КУХНЯ", "СВЯЗЬ",
+                "БИО-ЛАБ", "КАЮТЫ", "МЕДПУНКТ", "ОРУЖЕЙНАЯ", "МОСТИК"
+            ];
+
+            // Создаем 10 отсеков (2 ряда по 5)
+            for (let i = 0; i < 10; i++) {
+                let col = i % 5;
+                let row = Math.floor(i / 5);
+                let x = 150 + col * 150;
+                let y = 150 + row * 150;
+
+                let room = {
+                    id: i,
+                    name: roomData[i],
+                    x: x + 70, y: y + 70,
+                    o2: 100,
+                    isBroken: false,
+                    sprite: this.add.image(x, y, 'room_bg').setOrigin(0).setInteractive()
                 };
-                r.text = this.add.text(r.x - 45, r.y - 45, '', {fontSize: '10px'});
-                rooms.push(r);
+
+                room.text = this.add.text(x + 10, y + 10, '', { fontSize: '12px', fontStyle: 'bold' });
+                
+                // Клик ЛКМ - сломать (симуляция ЧП), Клик ПКМ - починить принудительно
+                room.sprite.on('pointerdown', (pointer) => {
+                    if (pointer.leftButtonDown()) room.o2 = 10; 
+                    else room.o2 = 100;
+                });
+
+                rooms.push(room);
             }
 
-            // Создаем одну автономную пешку
-            let p = this.physics.add.sprite(200, 200, 'pawn');
-            p.job = null;
-            crew.push(p);
+            // Создаем двух космонавтов (пешек)
+            for (let i = 0; i < 2; i++) {
+                let p = this.physics.add.sprite(200 + i*50, 400, 'pawn');
+                p.setCollideWorldBounds(true);
+                p.target = null;
+                p.status = "Ожидание";
+                p.label = this.add.text(p.x, p.y - 20, 'Экипаж', {fontSize: '10px'});
+                crew.push(p);
+            }
 
-            this.add.text(20, 20, "RIM-STATION: Пешка сама ищет отсек с низкой концентрацией O2", {fill: '#0f0'});
+            // Отключаем контекстное меню
+            this.input.mouse.disableContextMenu();
+            
+            this.add.text(20, window.innerHeight - 40, "ИНСТРУКЦИЯ: Пешки сами ищут отсеки с низким O2. ЛКМ по комнате - вызвать аварию.", {fill: '#55ff55'});
         }
 
         function update() {
+            // 1. Симуляция комнат
             rooms.forEach(r => {
-                r.o2 -= 0.05; // Воздух уходит
-                if(r.o2 < 0) r.o2 = 0;
-                r.text.setText(`${r.name}\nO2: ${Math.floor(r.o2)}%`);
-                r.sprite.setTint(r.o2 < 30 ? 0xff0000 : 0xffffff);
+                r.o2 -= 0.03; // Естественная утечка
+                if (r.o2 < 0) r.o2 = 0;
+
+                // Визуал в зависимости от O2
+                if (r.o2 < 40) {
+                    r.sprite.setTint(0xff5555); // Красный - тревога
+                    r.isBroken = true;
+                } else {
+                    r.sprite.setTint(0xffffff);
+                    r.isBroken = false;
+                }
+                r.text.setText(`${r.name}\nКислород: ${Math.floor(r.o2)}%`);
             });
 
+            // 2. ИИ Пешек (Логика RimWorld)
             crew.forEach(p => {
-                // Если нет задачи, ищем отсек, где O2 < 50
-                if (!p.job) {
-                    let criticalRoom = rooms.find(r => r.o2 < 50);
-                    if (criticalRoom) {
-                        p.job = criticalRoom;
-                        this.physics.moveToObject(p, criticalRoom, 100);
-                    }
-                }
+                p.label.setPosition(p.x - 20, p.y - 25);
+                p.label.setText(p.status);
 
-                // Если пришел в отсек - "чинит"
-                if (p.job) {
-                    let dist = Phaser.Math.Distance.Between(p.x, p.y, p.job.x, p.job.y);
-                    if (dist < 5) {
+                if (!p.target) {
+                    // Ищем самую проблемную комнату
+                    let urgentRoom = rooms.filter(r => r.o2 < 50).sort((a,b) => a.o2 - b.o2)[0];
+                    if (urgentRoom) {
+                        p.target = urgentRoom;
+                        p.status = "Иду в " + urgentRoom.name;
+                        this.physics.moveTo(p, urgentRoom.x, urgentRoom.y, 120);
+                    } else {
+                        p.status = "Свободен";
                         p.setVelocity(0);
-                        p.job.o2 += 0.5; // Работает!
-                        if (p.job.o2 >= 100) p.job = null; // Задача выполнена
+                    }
+                } else {
+                    // Если дошел до цели
+                    let dist = Phaser.Math.Distance.Between(p.x, p.y, p.target.x, p.target.y);
+                    if (dist < 10) {
+                        p.setVelocity(0);
+                        p.status = "Ремонт O2...";
+                        p.target.o2 += 0.4; // Восполнение воздуха
+                        if (p.target.o2 >= 100) {
+                            p.target = null; // Работа выполнена
+                        }
                     }
                 }
             });
+
+            // 3. Обновление ресурсов (UI)
+            document.getElementById('res-display').innerText = 
+                `Энергия: ${Math.floor(resources.power)}% | Скрап: ${resources.scrap} | Статус: СТАБИЛЬНО`;
         }
     </script>
 </body>
