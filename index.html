@@ -8,86 +8,73 @@
     <script>
         const config = {
             type: Phaser.AUTO,
-            width: window.innerWidth,
-            height: window.innerHeight,
-            physics: { default: 'arcade', arcade: { gravity: { y: 0 } } },
-            scene: { preload: preload, create: create, update: update }
+            width: 1000, height: 600,
+            physics: { default: 'arcade' },
+            scene: { preload, create, update }
         };
 
         const game = new Phaser.Game(config);
-        let crew;
-        let shipContainer;
+        let crew = [], rooms = [];
 
         function preload() {
             let g = this.make.graphics();
-            
-            // Рисуем космонавта (тело + голова)
-            g.fillStyle(0x33ccff, 1);
-            g.fillRect(0, 10, 20, 20); // Тело
-            g.fillStyle(0xffffff, 1);
-            g.fillRect(5, 0, 10, 10);  // Шлем
-            g.generateTexture('astronaut', 20, 30);
-
-            // Рисуем блок стены
-            g.clear();
-            g.fillStyle(0x777777, 1);
-            g.fillRect(0, 0, 40, 40);
-            g.lineStyle(2, 0x000000, 1);
-            g.strokeRect(0, 0, 40, 40);
-            g.generateTexture('wall', 40, 40);
+            // Космонавт
+            g.fillStyle(0xffffff); g.fillCircle(10, 10, 10);
+            g.generateTexture('pawn', 20, 20);
+            // Отсек
+            g.clear(); g.fillStyle(0x333333); g.fillRect(0,0,100,100);
+            g.lineStyle(1, 0x666666); g.strokeRect(0,0,100,100);
+            g.generateTexture('room', 100, 100);
         }
 
         function create() {
-            // Создаем группу для стен
-            let walls = this.physics.add.staticGroup();
+            const names = ["Реактор", "Кислород", "Склад", "Жилой", "Мостик"];
+            for(let i=0; i<5; i++) {
+                let r = {
+                    x: 150 + i*110, y: 250,
+                    o2: 100, name: names[i],
+                    sprite: this.add.image(150 + i*110, 250, 'room').setInteractive()
+                };
+                r.text = this.add.text(r.x - 45, r.y - 45, '', {fontSize: '10px'});
+                rooms.push(r);
+            }
 
-            // Рисуем корпус корабля (сетка 40x40 пикселей)
-            // 0 - пусто, 1 - стена
-            const shipLayout = [
-                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-                [1,0,0,0,1,0,0,0,1,0,0,0,0,0,1],
-                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                [1,0,0,0,1,0,0,0,1,0,0,0,0,0,1],
-                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            ];
+            // Создаем одну автономную пешку
+            let p = this.physics.add.sprite(200, 200, 'pawn');
+            p.job = null;
+            crew.push(p);
 
-            const offsetX = 100;
-            const offsetY = 150;
-
-            shipLayout.forEach((row, y) => {
-                row.forEach((cell, x) => {
-                    if (cell === 1) {
-                        walls.create(offsetX + x * 40, offsetY + y * 40, 'wall');
-                    }
-                });
-            });
-
-            // Создаем космонавта
-            crew = this.physics.add.sprite(offsetX + 60, offsetY + 60, 'astronaut');
-            crew.setCollideWorldBounds(true);
-            
-            // Включаем столкновения со стенами
-            this.physics.add.collider(crew, walls);
-
-            // Управление
-            this.input.on('pointerdown', (pointer) => {
-                this.physics.moveToObject(crew, pointer, 150);
-            });
-
-            this.add.text(20, 20, 'ПОСТРОЙКА КОРПУСА: Космонавт теперь не проходит сквозь стены!', { fill: '#00ff00' });
+            this.add.text(20, 20, "RIM-STATION: Пешка сама ищет отсек с низкой концентрацией O2", {fill: '#0f0'});
         }
 
         function update() {
-            // Поворот персонажа в сторону движения
-            if (crew.body.velocity.x !== 0 || crew.body.velocity.y !== 0) {
-                let angle = Math.atan2(crew.body.velocity.y, crew.body.velocity.x);
-                crew.setRotation(angle + Math.PI/2);
-            }
+            rooms.forEach(r => {
+                r.o2 -= 0.05; // Воздух уходит
+                if(r.o2 < 0) r.o2 = 0;
+                r.text.setText(`${r.name}\nO2: ${Math.floor(r.o2)}%`);
+                r.sprite.setTint(r.o2 < 30 ? 0xff0000 : 0xffffff);
+            });
 
-            let dist = Phaser.Math.Distance.Between(crew.x, crew.y, this.input.x, this.input.y);
-            if (dist < 10) {
-                crew.setVelocity(0);
-            }
+            crew.forEach(p => {
+                // Если нет задачи, ищем отсек, где O2 < 50
+                if (!p.job) {
+                    let criticalRoom = rooms.find(r => r.o2 < 50);
+                    if (criticalRoom) {
+                        p.job = criticalRoom;
+                        this.physics.moveToObject(p, criticalRoom, 100);
+                    }
+                }
+
+                // Если пришел в отсек - "чинит"
+                if (p.job) {
+                    let dist = Phaser.Math.Distance.Between(p.x, p.y, p.job.x, p.job.y);
+                    if (dist < 5) {
+                        p.setVelocity(0);
+                        p.job.o2 += 0.5; // Работает!
+                        if (p.job.o2 >= 100) p.job = null; // Задача выполнена
+                    }
+                }
+            });
         }
     </script>
 </body>
