@@ -2,163 +2,126 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <title>Интерактивный Персонаж</title>
     <style>
-        body { 
-            background: radial-gradient(circle, #1a1a2e 0%, #050505 100%); 
-            display: flex; justify-content: center; align-items: center; 
-            height: 100vh; margin: 0; overflow: hidden; font-family: 'Courier New', Courier, monospace;
-        }
-        
-        /* Контейнер марионетки (Крупный масштаб) */
-        .marionette { 
-            position: relative; 
-            width: 400px; height: 700px; 
-            cursor: pointer; 
+        /* Основной стиль страницы */
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #1a1a2e; /* Темно-синий фон под цвет картинки */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
-        .part { position: absolute; background-size: contain; background-repeat: no-repeat; transition: transform 0.2s ease; }
-
-        /* Туловище */
-        .body {
-            width: 300px; height: 400px;
-            top: 250px; left: 50px;
-            background-image: url('https://img.icons8.com/color/480/suit.png'); 
-            z-index: 2;
-            animation: breathe 5s ease-in-out infinite;
+        /* Контейнер для изображения и текста */
+        .container {
+            position: relative;
+            width: 800px; /* Ширина контейнера под размер изображения */
+            height: 800px;
+            cursor: pointer; /* Курсор в виде руки при наведении */
         }
 
-        /* Голова */
-        .head {
-            width: 180px; height: 180px;
-            top: 80px; left: 110px;
-            background-image: url('https://img.icons8.com/color/480/user-male-circle.png');
-            z-index: 3;
-            transform-origin: bottom center;
-            animation: head-bob 5s ease-in-out infinite;
-        }
-
-        /* Руки */
-        .arm {
-            width: 80px; height: 250px;
-            background-image: url('https://img.icons8.com/color/480/hand.png');
-            z-index: 1;
-            transform-origin: top center;
-        }
-
-        .left-arm { top: 270px; left: -10px; transform: rotate(10deg); }
-        .right-arm { top: 270px; left: 330px; transform: rotate(-10deg); }
-
-        /* Анимации */
-        @keyframes breathe {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.03); }
-        }
-
-        @keyframes head-bob {
-            0%, 100% { transform: rotate(-2deg); }
-            50% { transform: rotate(4deg); }
-        }
-
-        /* Машет рукой при клике */
-        .waving { animation: wave 0.8s ease-in-out infinite !important; }
-
-        @keyframes wave {
-            0%, 100% { transform: rotate(-10deg); }
-            50% { transform: rotate(-130deg); }
-        }
-
-        /* Текстовое облако */
-        .speech-container {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 400px;
-            min-height: 80px;
-            background: rgba(255, 255, 255, 0.95);
-            border: 4px solid #00d2ff;
+        /* Основное изображение персонажа */
+        .character-image {
+            width: 100%;
+            height: auto;
+            display: block;
             border-radius: 15px;
-            padding: 20px;
-            color: #333;
-            font-size: 20px;
-            font-weight: bold;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            display: none;
-            z-index: 10;
         }
-        
-        .speech-container::after {
-            content: '';
+
+        /* Стилизация текстового облака */
+        .speech-bubble {
             position: absolute;
-            bottom: -20px; left: 50%;
-            border-width: 20px 20px 0;
-            border-style: solid;
-            border-color: rgba(255, 255, 255, 0.95) transparent;
-            display: block; width: 0;
+            /* Координаты подобраны, чтобы попасть в нарисованное облако */
+            top: 105px; 
+            left: 530px;
+            width: 220px;
+            height: 100px;
+            /* Прозрачный фон, чтобы было видно оригинальное облако */
+            background: transparent; 
+            color: #333;
+            font-size: 14px;
+            line-height: 1.4;
+            font-weight: 600;
+            /* Скрываем текст, который не помещается */
+            overflow: hidden;
+            display: flex;
+            align-items: flex-start;
+            padding: 5px;
+        }
+
+        /* Курсор мигающий в конце текста (опционально) */
+        #typed-text::after {
+            content: '|';
+            opacity: 1;
+            animation: blink 0.7s infinite;
+        }
+        /* Анимация мигания курсора */
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
         }
     </style>
 </head>
 <body>
 
-<div class="marionette" onclick="startSpeech()">
-    <div id="speech-box" class="speech-container"></div>
-    <div class="head part" id="head"></div>
-    <div class="body part"></div>
-    <div class="arm left-arm part"></div>
-    <div class="arm right-arm part" id="right-arm"></div>
+<div class="container" onclick="startTyping()">
+    <img src="https://i.imgur.com/8QZ8w7x.png" alt="Персонаж" class="character-image">
+    
+    <div class="speech-bubble">
+        <span id="typed-text"></span>
+    </div>
 </div>
 
 <script>
+    // Список фраз, которые будет говорить персонаж
     const phrases = [
-        "Приветствую! Я твоя анимированная марионетка.",
-        "Как видишь, я теперь намного крупнее!",
-        "Нажми на меня еще раз, чтобы я что-то сказал.",
-        "Этот текст выводится по буквам, как в настоящей игре."
+        "Што смотришь. Я четкая ведьма.",
+        "Кликни на меня еще раз, чтобы продолжить диалог.",
+        "Этот текст печатается в реальном времени с помощью JavaScript.",
+        "Я готова ответить на твои вопросы. Задавай!",
+        "Могу рассказать анекдот или показать погоду. Что выберешь?"
     ];
-    
-    let currentPhrase = 0;
-    let isTyping = false;
 
-    function startSpeech() {
+    let currentPhraseIndex = 0; // Индекс текущей фразы
+    let isTyping = false; // Флаг, идет ли сейчас печать
+
+    // Функция для запуска печати текста
+    function startTyping() {
+        // Если текст уже печатается, выходим из функции
         if (isTyping) return;
         
-        const box = document.getElementById('speech-box');
-        const arm = document.getElementById('right-arm');
-        const head = document.getElementById('head');
-        
-        box.style.display = 'block';
-        box.innerHTML = '';
         isTyping = true;
-        
-        // Включаем активную жестикуляцию
-        arm.classList.add('waving');
-        head.style.animationDuration = '0.4s';
+        const textElement = document.getElementById('typed-text');
+        textElement.innerHTML = ''; // Очищаем предыдущий текст
 
-        let text = phrases[currentPhrase];
-        let i = 0;
+        let phrase = phrases[currentPhraseIndex]; // Берем текущую фразу
+        let charIndex = 0; // Индекс текущей буквы
 
-        function typeWriter() {
-            if (i < text.length) {
-                box.innerHTML += text.charAt(i);
-                i++;
-                setTimeout(typeWriter, 50); // Скорость печати
+        // Внутренняя функция, которая печатает по одной букве
+        function typeChar() {
+            if (charIndex < phrase.length) {
+                textElement.innerHTML += phrase.charAt(charIndex);
+                charIndex++;
+                // Запускаем эту же функцию через 50мс для следующей буквы
+                setTimeout(typeChar, 50); 
             } else {
+                // Печать закончена
                 isTyping = false;
-                currentPhrase = (currentPhrase + 1) % phrases.length;
-                
-                // Успокаиваем через 2 секунды после конца речи
-                setTimeout(() => {
-                    if (!isTyping) {
-                        arm.classList.remove('waving');
-                        head.style.animationDuration = '5s';
-                        box.style.display = 'none';
-                    }
-                }, 2000);
+                // Переходим к следующей фразе (по кругу)
+                currentPhraseIndex = (currentPhraseIndex + 1) % phrases.length;
             }
         }
-        
-        typeWriter();
+
+        // Запускаем процесс печати
+        typeChar();
     }
+
+    // Запускаем первую фразу автоматически при загрузке страницы
+    window.onload = startTyping;
 </script>
 
 </body>
