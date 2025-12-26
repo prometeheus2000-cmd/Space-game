@@ -4,72 +4,69 @@
     <meta charset="UTF-8">
     <title>Интерактивный Персонаж</title>
     <style>
-        /* Основной стиль страницы */
         body {
-            margin: 0;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-color: #1a1a2e; /* Темно-синий фон под цвет картинки */
+            margin: 0; height: 100vh;
+            display: flex; justify-content: center; align-items: center;
+            background-color: #1a1a2e;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden; /* Скрываем полосы прокрутки при анимации */
         }
 
-        /* Контейнер для изображения и текста */
         .container {
             position: relative;
-            width: 800px; /* Ширина контейнера под размер изображения */
-            height: 800px;
-            cursor: pointer; /* Курсор в виде руки при наведении */
+            width: 800px; height: 800px;
+            cursor: pointer;
         }
 
-        /* Основное изображение персонажа */
+        /* Основное изображение */
         .character-image {
-            width: 100%;
-            height: auto;
+            width: 100%; height: auto;
             display: block;
             border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            /* Добавляем плавность переходов */
+            transition: transform 0.2s ease-in-out;
         }
 
-        /* Стилизация текстового облака */
+        /* --- НОВОЕ: Класс для анимации разговора --- */
+        .is-talking {
+            /* Запускаем анимацию "talking-bob" бесконечно, пока есть этот класс */
+            animation: talking-bob 0.6s infinite ease-in-out;
+        }
+
+        /* --- НОВОЕ: Сама анимация (легкое покачивание и увеличение) --- */
+        @keyframes talking-bob {
+            0% { transform: scale(1) translateY(0); }
+            50% { transform: scale(1.02) translateY(-5px); } /* Чуть вверх и больше */
+            100% { transform: scale(1) translateY(0); }
+        }
+        /* ----------------------------------------- */
+
         .speech-bubble {
             position: absolute;
-            /* Координаты подобраны, чтобы попасть в нарисованное облако */
-            top: 105px; 
-            left: 530px;
-            width: 220px;
-            height: 100px;
-            /* Прозрачный фон, чтобы было видно оригинальное облако */
-            background: transparent; 
+            top: 105px; left: 530px;
+            width: 220px; height: 100px;
+            background: transparent;
             color: #333;
-            font-size:   20px;
-            line-height: 1.4;
+            font-size: 22px; /* Чуть увеличил шрифт для читаемости */
+            line-height: 1.3;
             font-weight: 600;
-            /* Скрываем текст, который не помещается */
             overflow: hidden;
-            display: flex;
-            align-items: flex-start;
+            display: flex; align-items: flex-start;
             padding: 5px;
         }
 
-        /* Курсор мигающий в конце текста (опционально) */
         #typed-text::after {
-            content: '|';
-            opacity: 1;
+            content: '|'; opacity: 1;
             animation: blink 0.7s infinite;
         }
-        /* Анимация мигания курсора */
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
-        }
+        @keyframes blink { 50% { opacity: 0; } }
     </style>
 </head>
 <body>
 
 <div class="container" onclick="startTyping()">
-    <img src="Character1.png" alt="Персонаж" class="character-image">
+    <img id="char-img" src="Character1.png" alt="Персонаж" class="character-image">
     
     <div class="speech-bubble">
         <span id="typed-text"></span>
@@ -77,50 +74,49 @@
 </div>
 
 <script>
-    // Список фраз, которые будет говорить персонаж
     const phrases = [
-        "Што смотришь. Я четкая ведьма.",
-        "Смит гадина меня сюда присобачил. теперь стою тут.",
-        "А пока я тут стою он подлец колдует еще чтото в коде вместе с ИИ.",
-        "Он хочет ИИ засунуть мне в мозг, делает из меня робота",
-        "скоро я буду махать руками, рассказывать анекдоты и хлопать в ладошки."
+        "Драсте, я робот ведьма. Морана.",
+        "Смит гадина меня сюда засунул. Теперь кукую тут.",
+        "Он хочет превратить меня в робота. Колдует с ИИ.",
+        "Скоро я буду танцевать, и хлопать в ладоши. А позже и пивка подвезут.!"
     ];
 
-    let currentPhraseIndex = 0; // Индекс текущей фразы
-    let isTyping = false; // Флаг, идет ли сейчас печать
+    let currentPhraseIndex = 0;
+    let isTyping = false;
 
-    // Функция для запуска печати текста
     function startTyping() {
-        // Если текст уже печатается, выходим из функции
         if (isTyping) return;
         
         isTyping = true;
         const textElement = document.getElementById('typed-text');
-        textElement.innerHTML = ''; // Очищаем предыдущий текст
+        // НОВОЕ: Находим картинку по ID
+        const charImage = document.getElementById('char-img');
+        
+        textElement.innerHTML = '';
 
-        let phrase = phrases[currentPhraseIndex]; // Берем текущую фразу
-        let charIndex = 0; // Индекс текущей буквы
+        // НОВОЕ: Добавляем класс анимации -> картинка начинает двигаться
+        charImage.classList.add('is-talking');
 
-        // Внутренняя функция, которая печатает по одной букве
+        let phrase = phrases[currentPhraseIndex];
+        let charIndex = 0;
+
         function typeChar() {
             if (charIndex < phrase.length) {
                 textElement.innerHTML += phrase.charAt(charIndex);
                 charIndex++;
-                // Запускаем эту же функцию через 50мс для следующей буквы
                 setTimeout(typeChar, 50); 
             } else {
                 // Печать закончена
                 isTyping = false;
-                // Переходим к следующей фразе (по кругу)
                 currentPhraseIndex = (currentPhraseIndex + 1) % phrases.length;
+                
+                // НОВОЕ: Убираем класс анимации -> картинка останавливается
+                charImage.classList.remove('is-talking');
             }
         }
-
-        // Запускаем процесс печати
         typeChar();
     }
 
-    // Запускаем первую фразу автоматически при загрузке страницы
     window.onload = startTyping;
 </script>
 
