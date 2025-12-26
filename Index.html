@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
+</head>
+<body>
+    <script>
+        const config = {
+            type: Phaser.AUTO,
+            width: 800,
+            height: 600,
+            backgroundColor: '#050505',
+            physics: {
+                default: 'arcade',
+                arcade: { gravity: { y: 300 }, debug: true }
+            },
+            scene: { preload: preload, create: create, update: update }
+        };
+
+        const game = new Phaser.Game(config);
+        let crew;
+        let platforms;
+
+        function preload() {
+            // Создаем временные спрайты программно
+            let graphics = this.make.graphics();
+            
+            // Спрайт космонавта
+            graphics.fillStyle(0xffffff, 1);
+            graphics.fillRect(0, 0, 20, 40);
+            graphics.generateTexture('astronaut', 20, 40);
+            
+            // Спрайт платформы (палуба)
+            graphics.clear();
+            graphics.fillStyle(0x444444, 1);
+            graphics.fillRect(0, 0, 400, 20);
+            graphics.generateTexture('deck', 400, 20);
+        }
+
+        function create() {
+            // Создаем палубы корабля
+            platforms = this.physics.add.staticGroup();
+            platforms.create(400, 500, 'deck'); // Нижняя палуба
+            platforms.create(400, 350, 'deck'); // Верхняя палуба
+
+            // Создаем космонавта
+            crew = this.physics.add.sprite(400, 450, 'astronaut');
+            crew.setCollideWorldBounds(true);
+            
+            // Коллизия (персонаж стоит на палубе)
+            this.physics.add.collider(crew, platforms);
+
+            // Управление кликом: персонаж идет к месту клика
+            this.input.on('pointerdown', (pointer) => {
+                this.physics.moveToObject(crew, {x: pointer.x, y: crew.y}, 100);
+            });
+
+            this.add.text(10, 10, 'Кликни на палубу, чтобы переместить пилота', { fill: '#00ff00' });
+        }
+
+        function update() {
+            // Остановка персонажа, если он дошел до цели по X
+            let distance = Math.abs(crew.x - this.input.activePointer.x);
+            if (distance < 5) {
+                crew.setVelocityX(0);
+            }
+        }
+    </script>
+</body>
+  </html>
