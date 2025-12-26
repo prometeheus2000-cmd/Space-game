@@ -2,7 +2,7 @@
 <html>
 <head>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
-    <style>body { margin: 0; overflow: hidden; }</style>
+    <style>body { margin: 0; background: #000; }</style>
 </head>
 <body>
     <script>
@@ -10,71 +10,84 @@
             type: Phaser.AUTO,
             width: window.innerWidth,
             height: window.innerHeight,
-            physics: { default: 'arcade', arcade: { gravity: { y: 0 }, debug: false } },
+            physics: { default: 'arcade', arcade: { gravity: { y: 0 } } },
             scene: { preload: preload, create: create, update: update }
         };
 
         const game = new Phaser.Game(config);
         let crew;
-        let rooms = [];
+        let shipContainer;
 
         function preload() {
             let g = this.make.graphics();
-            // Космонавт
-            g.fillStyle(0x00ff00, 1);
-            g.fillRect(0, 0, 30, 30);
-            g.generateTexture('crew', 30, 30);
-            // Комната
+            
+            // Рисуем космонавта (тело + голова)
+            g.fillStyle(0x33ccff, 1);
+            g.fillRect(0, 10, 20, 20); // Тело
+            g.fillStyle(0xffffff, 1);
+            g.fillRect(5, 0, 10, 10);  // Шлем
+            g.generateTexture('astronaut', 20, 30);
+
+            // Рисуем блок стены
             g.clear();
-            g.lineStyle(4, 0x555555, 1);
-            g.strokeRect(0, 0, 200, 150);
-            g.generateTexture('room_border', 200, 150);
+            g.fillStyle(0x777777, 1);
+            g.fillRect(0, 0, 40, 40);
+            g.lineStyle(2, 0x000000, 1);
+            g.strokeRect(0, 0, 40, 40);
+            g.generateTexture('wall', 40, 40);
         }
 
         function create() {
-            // Создаем 3 отсека: Мостик, Реакторная, Двигатели
-            const names = ['МОСТИК', 'РЕАКТОР', 'ДВИГАТЕЛЬ'];
-            for(let i = 0; i < 3; i++) {
-                let x = 100 + (i * 210);
-                let y = 200;
-                let roomImg = this.add.image(x, y, 'room_border').setOrigin(0);
-                
-                let roomData = {
-                    name: names[i],
-                    x: x, y: y,
-                    width: 200, height: 150,
-                    hasPower: true,
-                    text: this.add.text(x + 10, y + 10, names[i], { fontSize: '16px', color: '#00ff00' })
-                };
-                rooms.push(roomData);
-            }
+            // Создаем группу для стен
+            let walls = this.physics.add.staticGroup();
 
-            // Создаем персонажа (без гравитации для простоты пока)
-            crew = this.physics.add.sprite(150, 275, 'crew');
+            // Рисуем корпус корабля (сетка 40x40 пикселей)
+            // 0 - пусто, 1 - стена
+            const shipLayout = [
+                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+                [1,0,0,0,1,0,0,0,1,0,0,0,0,0,1],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                [1,0,0,0,1,0,0,0,1,0,0,0,0,0,1],
+                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            ];
+
+            const offsetX = 100;
+            const offsetY = 150;
+
+            shipLayout.forEach((row, y) => {
+                row.forEach((cell, x) => {
+                    if (cell === 1) {
+                        walls.create(offsetX + x * 40, offsetY + y * 40, 'wall');
+                    }
+                });
+            });
+
+            // Создаем космонавта
+            crew = this.physics.add.sprite(offsetX + 60, offsetY + 60, 'astronaut');
+            crew.setCollideWorldBounds(true);
             
+            // Включаем столкновения со стенами
+            this.physics.add.collider(crew, walls);
+
+            // Управление
             this.input.on('pointerdown', (pointer) => {
                 this.physics.moveToObject(crew, pointer, 150);
             });
 
-            this.add.text(20, 20, 'УПРАВЛЕНИЕ: Кликни, чтобы отправить инженера в отсек', { color: '#ffffff' });
+            this.add.text(20, 20, 'ПОСТРОЙКА КОРПУСА: Космонавт теперь не проходит сквозь стены!', { fill: '#00ff00' });
         }
 
         function update() {
-            // Проверка: в какой комнате находится инженер?
-            rooms.forEach(room => {
-                if (crew.x > room.x && crew.x < room.x + room.width &&
-                    crew.y > room.y && crew.y < room.y + room.height) {
-                    room.text.setText(room.name + "\n[ ИНЖЕНЕР ВНУТРИ ]");
-                    room.text.setColor('#ffff00');
-                } else {
-                    room.text.setText(room.name + (room.hasPower ? "\nСтатус: ОК" : "\nНЕТ ПИТАНИЯ"));
-                    room.text.setColor('#00ff00');
-                }
-            });
+            // Поворот персонажа в сторону движения
+            if (crew.body.velocity.x !== 0 || crew.body.velocity.y !== 0) {
+                let angle = Math.atan2(crew.body.velocity.y, crew.body.velocity.x);
+                crew.setRotation(angle + Math.PI/2);
+            }
 
-            // Остановка возле курсора
             let dist = Phaser.Math.Distance.Between(crew.x, crew.y, this.input.x, this.input.y);
-            if (dist < 10) crew.setVelocity(0);
+            if (dist < 10) {
+                crew.setVelocity(0);
+            }
         }
     </script>
 </body>
